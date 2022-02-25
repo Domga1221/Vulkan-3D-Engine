@@ -1,5 +1,7 @@
 #include "lve_window.hpp"
 
+#include <stdexcept>
+
 namespace lve {
 	// Constructor with member initializer list
 	LveWindow::LveWindow(int width, int height, std::string windowName) : width{ width }, height{ height }, windowName{ windowName }{
@@ -9,6 +11,13 @@ namespace lve {
 	LveWindow::~LveWindow() {
 		glfwDestroyWindow(window); // destroy window
 		glfwTerminate(); // terminate glfw Library
+	}
+
+	void LveWindow::createWindowSurface(VkInstance instance, VkSurfaceKHR* surface)
+	{
+		if (glfwCreateWindowSurface(instance, window, nullptr, surface) != VK_SUCCESS) {
+			throw std::runtime_error("failed to create window surface");
+		}
 	}
 
 	void LveWindow::initWindow() {

@@ -1,7 +1,8 @@
 #pragma once // only include once to avoid compiler errors
 
-#define GLFW_INCLUDE_VULKAN
+#define GLFW_INCLUDE_VULKAN // include GLFW and load Vulkan header
 #include <GLFW/glfw3.h>
+
 #include <string>
 
 namespace lve {
@@ -18,6 +19,8 @@ namespace lve {
 		LveWindow& operator=(const LveWindow&) = delete;
 
 		bool shouldClose() { return glfwWindowShouldClose(window); }; // returns if user wants to close window
+
+		void createWindowSurface(VkInstance instance, VkSurfaceKHR* surface);
 
 	private: 
 
