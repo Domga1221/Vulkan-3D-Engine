@@ -9,8 +9,9 @@
 namespace lve {
 
     // local callback functions
+    // VKAPI_ATTR and VKAPI_CALL ensure that the function has the right signature for Vulkan to call it 
     static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
-        VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+        VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, // specifies the severity of the mesasage
         VkDebugUtilsMessageTypeFlagsEXT messageType,
         const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
         void* pUserData) {
@@ -24,7 +25,7 @@ namespace lve {
         const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
         const VkAllocationCallbacks* pAllocator,
         VkDebugUtilsMessengerEXT* pDebugMessenger) {
-        auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(
+        auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr( // returns nullptr if function couldn't be loaded
             instance,
             "vkCreateDebugUtilsMessengerEXT");
         if (func != nullptr) {
@@ -49,7 +50,7 @@ namespace lve {
 
     // class member functions
     LveDevice::LveDevice(LveWindow& window) : window{ window } { // creates vulkan instance + validation layers
-        createInstance();
+        createInstance(); // create Vulkan instance
         setupDebugMessenger(); // setup validation layers
         createSurface(); // glfw surface, e.g. the window
         pickPhysicalDevice(); // pick the physical device, graphics card/gpu or cpu graphics
@@ -62,36 +63,40 @@ namespace lve {
         vkDestroyDevice(device_, nullptr);
 
         if (enableValidationLayers) {
+            // destroys DebugUtilsMessenger if validation layers are enabled
             DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
         }
 
         vkDestroySurfaceKHR(instance, surface_, nullptr);
-        vkDestroyInstance(instance, nullptr);
+        vkDestroyInstance(instance, nullptr); // optional callback not used -> nullptr, destroy Vulkan instance
     }
 
+    // create Vulkan instance
     void LveDevice::createInstance() {
-        if (enableValidationLayers && !checkValidationLayerSupport()) {
+
+        // check if validation layers are enabled, check if they are supported
+        if (enableValidationLayers && !checkValidationLayerSupport()) { 
             throw std::runtime_error("validation layers requested, but not available!");
         }
 
-        VkApplicationInfo appInfo = {};
-        appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+        VkApplicationInfo appInfo = {}; // information about application for performance optimization, optional
+        appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO; // specify type of struct
         appInfo.pApplicationName = "LittleVulkanEngine App";
         appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
         appInfo.pEngineName = "No Engine";
         appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
         appInfo.apiVersion = VK_API_VERSION_1_0;
 
-        VkInstanceCreateInfo createInfo = {};
+        VkInstanceCreateInfo createInfo = {}; // not optional, which global extensions and validation layers are used
         createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
         createInfo.pApplicationInfo = &appInfo;
 
-        auto extensions = getRequiredExtensions();
-        createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
-        createInfo.ppEnabledExtensionNames = extensions.data();
+        auto extensions = getRequiredExtensions(); // get GLFW extensions
+        createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size()); // global extension layers - will be explained later
+        createInfo.ppEnabledExtensionNames = extensions.data(); // global extension layers - will be explained later
 
         VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo;
-        if (enableValidationLayers) {
+        if (enableValidationLayers) { // include validation layer names if they are enabled
             createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
             createInfo.ppEnabledLayerNames = validationLayers.data();
 
@@ -99,15 +104,19 @@ namespace lve {
             createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*)&debugCreateInfo;
         }
         else {
-            createInfo.enabledLayerCount = 0;
-            createInfo.pNext = nullptr;
+            createInfo.enabledLayerCount = 0; //
+            createInfo.pNext = nullptr; // pNext can point to extension information in the future
         }
 
-        if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS) {
+        // params:  1. Pointer to struct with creation info
+        //          2. Pointer to custom allocator callbacks, always nullptr here
+        //          3. Pointer to the variable that stores the handle to the new object
+        // return-value:    almost always VK_SUCCESS or an error code to check if instance was created successfully
+        if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS) { // create the Vulkan instance
             throw std::runtime_error("failed to create instance!");
         }
 
-        hasGflwRequiredInstanceExtensions();
+        hasGflwRequiredInstanceExtensions(); // check if optional extensions failed
     }
 
     void LveDevice::pickPhysicalDevice() {
@@ -220,28 +229,32 @@ namespace lve {
         VkDebugUtilsMessengerCreateInfoEXT& createInfo) {
         createInfo = {};
         createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-        createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
-            VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-        createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+        createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |  // specify all the types the for which
+            VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;                              // you would like the callback to be called for
+        createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |  // which message types your callback is notified about
             VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
             VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-        createInfo.pfnUserCallback = debugCallback;
-        createInfo.pUserData = nullptr;  // Optional
+        createInfo.pfnUserCallback = debugCallback; // pointer to callback function
+        createInfo.pUserData = nullptr;  // Optional, additional data that is passed to the callback function
     }
 
     void LveDevice::setupDebugMessenger() {
-        if (!enableValidationLayers) return;
+        if (!enableValidationLayers) return; // no debug validation layers -> return
         VkDebugUtilsMessengerCreateInfoEXT createInfo;
-        populateDebugMessengerCreateInfo(createInfo);
-        if (CreateDebugUtilsMessengerEXT(instance, &createInfo, nullptr, &debugMessenger) != VK_SUCCESS) {
+        populateDebugMessengerCreateInfo(createInfo); // populate validation layers
+        // throw error if validation layers could not be called
+        if (CreateDebugUtilsMessengerEXT(instance, &createInfo, nullptr, &debugMessenger) != VK_SUCCESS) { 
             throw std::runtime_error("failed to set up debug messenger!");
         }
     }
 
+    // check if requested layers are available
     bool LveDevice::checkValidationLayerSupport() {
+        // retrieve validation layer count
         uint32_t layerCount;
         vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
 
+        // get array of validation layers
         std::vector<VkLayerProperties> availableLayers(layerCount);
         vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
 
@@ -263,15 +276,19 @@ namespace lve {
         return true;
     }
 
-    std::vector<const char*> LveDevice::getRequiredExtensions() {
-        uint32_t glfwExtensionCount = 0;
-        const char** glfwExtensions;
-        glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+    std::vector<const char*> LveDevice::getRequiredExtensions() { // GLFW has function that returns the required extensions
+        uint32_t glfwExtensionCount = 0; 
+        // Vulkan is a platform agnostic API, which means you need an extension to interface with the window system
+        const char** glfwExtensions; 
+        // returns the vulkan instance extensions required by GLFW
+        glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount); 
 
         std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
 
         if (enableValidationLayers) {
-            extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+            // vector.push_back adds new element at the end of the vector
+            // use macro string
+            extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME); 
         }
 
         return extensions;
@@ -279,10 +296,14 @@ namespace lve {
 
     void LveDevice::hasGflwRequiredInstanceExtensions() {
         uint32_t extensionCount = 0;
+        // saves number of extension properties available in 2. parameter
         vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
-        std::vector<VkExtensionProperties> extensions(extensionCount);
-        vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, extensions.data());
 
+        std::vector<VkExtensionProperties> extensions(extensionCount); // allocate array that holds extension details
+        // query extension details and save in array
+        vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, extensions.data()); 
+
+        // print available extensions  name
         std::cout << "available extensions:" << std::endl;
         std::unordered_set<std::string> available;
         for (const auto& extension : extensions) {
