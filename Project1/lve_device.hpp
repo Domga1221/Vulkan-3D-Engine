@@ -14,6 +14,8 @@ namespace lve {
         std::vector<VkPresentModeKHR> presentModes;
     };
 
+
+    // struct for queue families
     struct QueueFamilyIndices {
         uint32_t graphicsFamily;
         uint32_t presentFamily;
@@ -92,7 +94,7 @@ namespace lve {
 
         VkInstance instance; // reference to Vulkan instance
         VkDebugUtilsMessengerEXT debugMessenger;
-        VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+        VkPhysicalDevice physicalDevice = VK_NULL_HANDLE; // reference to GPU, implicitly destroyed when VkInstance is destroyed
         LveWindow& window;
         VkCommandPool commandPool;
 

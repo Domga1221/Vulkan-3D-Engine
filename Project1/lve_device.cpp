@@ -122,20 +122,21 @@ namespace lve {
     void LveDevice::pickPhysicalDevice() {
         uint32_t deviceCount = 0;
         vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
-        if (deviceCount == 0) {
+        if (deviceCount == 0) { // if there is no device with vulkan support
             throw std::runtime_error("failed to find GPUs with Vulkan support!");
         }
         std::cout << "Device count: " << deviceCount << std::endl;
-        std::vector<VkPhysicalDevice> devices(deviceCount);
+        std::vector<VkPhysicalDevice> devices(deviceCount); // array of physical device handles
         vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
 
+        // picks and finds suitable device
         for (const auto& device : devices) {
             if (isDeviceSuitable(device)) {
                 physicalDevice = device;
                 break;
             }
         }
-
+        // if no device is suitable
         if (physicalDevice == VK_NULL_HANDLE) {
             throw std::runtime_error("failed to find a suitable GPU!");
         }
@@ -207,8 +208,10 @@ namespace lve {
 
     void LveDevice::createSurface() { window.createWindowSurface(instance, &surface_); }
 
+
+    // checks if device is suitable for the operations we want to perform
     bool LveDevice::isDeviceSuitable(VkPhysicalDevice device) {
-        QueueFamilyIndices indices = findQueueFamilies(device);
+        QueueFamilyIndices indices = findQueueFamilies(device); // find queue families
 
         bool extensionsSupported = checkDeviceExtensionSupport(device);
 
@@ -341,14 +344,17 @@ namespace lve {
         return requiredExtensions.empty();
     }
 
+
+    // queue families allow only a subset of commands -> every operation in Vulkan requires commands to be submitted to a queue 
     QueueFamilyIndices LveDevice::findQueueFamilies(VkPhysicalDevice device) {
         QueueFamilyIndices indices;
 
-        uint32_t queueFamilyCount = 0;
+        uint32_t queueFamilyCount = 0;  
         vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
 
         std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
-        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+        // write family properties into vector
+        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data()); 
 
         int i = 0;
         for (const auto& queueFamily : queueFamilies) {
