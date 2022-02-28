@@ -98,9 +98,9 @@ namespace lve {
         LveWindow& window;
         VkCommandPool commandPool;
 
-        VkDevice device_;
+        VkDevice device_; // logical device
         VkSurfaceKHR surface_;
-        VkQueue graphicsQueue_;
+        VkQueue graphicsQueue_; // graphics queue 
         VkQueue presentQueue_;
 
         const std::vector<const char*> validationLayers = { "VK_LAYER_KHRONOS_validation" }; // standard validation

@@ -60,7 +60,7 @@ namespace lve {
 
     LveDevice::~LveDevice() {
         vkDestroyCommandPool(device_, commandPool, nullptr);
-        vkDestroyDevice(device_, nullptr);
+        vkDestroyDevice(device_, nullptr); // destroy logical device
 
         if (enableValidationLayers) {
             // destroys DebugUtilsMessenger if validation layers are enabled
@@ -145,6 +145,7 @@ namespace lve {
         std::cout << "physical device: " << properties.deviceName << std::endl;
     }
 
+    // 
     void LveDevice::createLogicalDevice() {
         QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
 
@@ -164,6 +165,7 @@ namespace lve {
         VkPhysicalDeviceFeatures deviceFeatures = {};
         deviceFeatures.samplerAnisotropy = VK_TRUE;
 
+        // creating logical device
         VkDeviceCreateInfo createInfo = {};
         createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 
@@ -184,11 +186,11 @@ namespace lve {
             createInfo.enabledLayerCount = 0;
         }
 
-        if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &device_) != VK_SUCCESS) {
+        if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &device_) != VK_SUCCESS) { // instantiate logical device
             throw std::runtime_error("failed to create logical device!");
         }
 
-        vkGetDeviceQueue(device_, indices.graphicsFamily, 0, &graphicsQueue_);
+        vkGetDeviceQueue(device_, indices.graphicsFamily, 0, &graphicsQueue_); // create queue
         vkGetDeviceQueue(device_, indices.presentFamily, 0, &presentQueue_);
     }
 
