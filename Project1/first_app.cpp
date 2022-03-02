@@ -33,7 +33,11 @@ namespace lve {
 	}
 
 	void FirstApp::createPipeline() {
-		auto pipelineConfig = LvePipeline::defaultPipelineConfigInfo(lveSwapChain.width(), lveSwapChain.height());
+		PipelineConfigInfo pipelineConfig{};
+		LvePipeline::defaultPipelineConfigInfo(
+			pipelineConfig,
+			lveSwapChain.width(),
+			lveSwapChain.height());
 		pipelineConfig.renderPass = lveSwapChain.getRenderPass(); // describes structure and format of render buffer 
 		pipelineConfig.pipelineLayout = pipelineLayout;
 		lvePipeline = std::make_unique<LvePipeline>(
