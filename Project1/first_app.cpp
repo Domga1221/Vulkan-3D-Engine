@@ -1,10 +1,12 @@
 #include "first_app.hpp"
 #include <stdexcept>
 #include <array>
+#include <vector>
 
 namespace lve {
 
 	FirstApp::FirstApp() {
+		loadModels();
 		createPipelineLayout();
 		createPipeline();
 		createCommandBuffers();
@@ -21,6 +23,16 @@ namespace lve {
 		}
 
 		vkDeviceWaitIdle(lveDevice.device()); // CPU blocks until all GPU operations have completed
+	}
+
+	void FirstApp::loadModels() {
+		std::vector<LveModel::Vertex> vertices{
+			{{0.0f, -0.5f}},
+			{{0.5f, 0.5f}},
+			{{-0.5f, 0.5f}}
+		};
+
+		lveModel = std::make_unique<LveModel>(lveDevice, vertices);
 	}
 
 	void FirstApp::createPipelineLayout() {
@@ -88,8 +100,9 @@ namespace lve {
 
 			vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE); // no secondary command buffers
 
-			lvePipeline->bind(commandBuffers[i]);
-			vkCmdDraw(commandBuffers[i], 3, 1, 0, 0);
+			lvePipeline->bind(commandBuffers[i]); // bind graphics pipeline
+			lveModel->bind(commandBuffers[i]); // bind model with vertix data
+			lveModel->draw(commandBuffers[i]); // record command buffer to draw every vertex contained in buffer
 
 			vkCmdEndRenderPass(commandBuffers[i]);
 			if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS) {
