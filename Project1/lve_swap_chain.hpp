@@ -11,7 +11,7 @@ namespace lve {
 
     class LveSwapChain {
     public:
-        static constexpr int MAX_FRAMES_IN_FLIGHT = 2;
+        static constexpr int MAX_FRAMES_IN_FLIGHT = 2; // at most 2 command buffers to be submitted at once
 
         LveSwapChain(LveDevice& deviceRef, VkExtent2D windowExtent);
         ~LveSwapChain();
