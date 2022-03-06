@@ -8,7 +8,7 @@ namespace lve {
 	FirstApp::FirstApp() {
 		loadModels();
 		createPipelineLayout();
-		createPipeline();
+		recreateSwapChain();
 		createCommandBuffers();
 	}
 
@@ -49,12 +49,12 @@ namespace lve {
 	}
 
 	void FirstApp::createPipeline() {
+		assert(lveSwapChain != nullptr && "Cannot create pipeline before swap chain");
+		assert(pipelineLayout != nullptr && "Cannot create pipeline before pipeline layout");
+
 		PipelineConfigInfo pipelineConfig{};
-		LvePipeline::defaultPipelineConfigInfo(
-			pipelineConfig,
-			lveSwapChain.width(),
-			lveSwapChain.height());
-		pipelineConfig.renderPass = lveSwapChain.getRenderPass(); // describes structure and format of render buffer 
+		LvePipeline::defaultPipelineConfigInfo(pipelineConfig);
+		pipelineConfig.renderPass = lveSwapChain->getRenderPass(); // describes structure and format of render buffer 
 		pipelineConfig.pipelineLayout = pipelineLayout;
 		lvePipeline = std::make_unique<LvePipeline>(
 			lveDevice,
@@ -63,8 +63,31 @@ namespace lve {
 			pipelineConfig);
 	}
 
+	void FirstApp::recreateSwapChain() {
+		auto extent = lveWindow.getExtent();
+		while (extent.width == 0 || extent.height == 0) {
+			extent = lveWindow.getExtent();
+			glfwWaitEvents();
+		}
+
+		vkDeviceWaitIdle(lveDevice.device()); // wait until current swapchain is no longer used before creating new swap chain
+
+		if (lveSwapChain == nullptr) {
+			lveSwapChain = std::make_unique<LveSwapChain>(lveDevice, extent);
+		}
+		else {
+			lveSwapChain = std::make_unique<LveSwapChain>(lveDevice, extent, std::move(lveSwapChain));
+			if (lveSwapChain->imageCount() != commandBuffers.size()) {
+				freeCommandBuffers();
+				createCommandBuffers();
+			}
+		}
+
+		createPipeline();
+	}
+
 	void FirstApp::createCommandBuffers() {
-		commandBuffers.resize(lveSwapChain.imageCount()); // 2 or 3, double or triple buffering
+		commandBuffers.resize(lveSwapChain->imageCount()); // 2 or 3, double or triple buffering
 
 		VkCommandBufferAllocateInfo allocInfo{};
 		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -75,51 +98,81 @@ namespace lve {
 		if (vkAllocateCommandBuffers(lveDevice.device(), &allocInfo, commandBuffers.data()) != VK_SUCCESS) {
 			throw std::runtime_error("failed to allocate command buffers!");
 		}
+	}
 
-		for (int i = 0; i < commandBuffers.size(); i++) {
-			VkCommandBufferBeginInfo beginInfo{};
-			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-			
-			if (vkBeginCommandBuffer(commandBuffers[i], &beginInfo) != VK_SUCCESS) {
-				throw std::runtime_error("failed to begin recording command buffer!");
-			}
+	void FirstApp::freeCommandBuffers()
+	{
+		vkFreeCommandBuffers(lveDevice.device(), lveDevice.getCommandPool(), 
+			static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
 
-			VkRenderPassBeginInfo renderPassInfo{};
-			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-			renderPassInfo.renderPass = lveSwapChain.getRenderPass();
-			renderPassInfo.framebuffer = lveSwapChain.getFrameBuffer(i);
-
-			renderPassInfo.renderArea.offset = { 0, 0 };
-			renderPassInfo.renderArea.extent = lveSwapChain.getSwapChainExtent();
-
-			std::array<VkClearValue, 2> clearValues{};
-			clearValues[0].color = { 0.1f, 0.1f, 0.1f, 1.0f }; // rgba
-			clearValues[1].depthStencil = { 1.0f, 0 }; // index 0 is color attachment of the frame buffer, index 1 is depth
-			renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
-			renderPassInfo.pClearValues = clearValues.data();
-
-			vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE); // no secondary command buffers
-
-			lvePipeline->bind(commandBuffers[i]); // bind graphics pipeline
-			lveModel->bind(commandBuffers[i]); // bind model with vertix data
-			lveModel->draw(commandBuffers[i]); // record command buffer to draw every vertex contained in buffer
-
-			vkCmdEndRenderPass(commandBuffers[i]);
-			if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS) {
-				throw std::runtime_error("failed to record command buffer!");
-			}
-		}
+		commandBuffers.clear();
 	};
+
+	void FirstApp::recordCommandBuffer(int imageIndex) {
+		VkCommandBufferBeginInfo beginInfo{};
+		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+
+		if (vkBeginCommandBuffer(commandBuffers[imageIndex], &beginInfo) != VK_SUCCESS) {
+			throw std::runtime_error("failed to begin recording command buffer!");
+		}
+
+		VkRenderPassBeginInfo renderPassInfo{};
+		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		renderPassInfo.renderPass = lveSwapChain->getRenderPass();
+		renderPassInfo.framebuffer = lveSwapChain->getFrameBuffer(imageIndex);
+
+		renderPassInfo.renderArea.offset = { 0, 0 };
+		renderPassInfo.renderArea.extent = lveSwapChain->getSwapChainExtent();
+
+		std::array<VkClearValue, 2> clearValues{};
+		clearValues[0].color = { 0.1f, 0.1f, 0.1f, 1.0f }; // rgba
+		clearValues[1].depthStencil = { 1.0f, 0 }; // index 0 is color attachment of the frame buffer, index 1 is depth
+		renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+		renderPassInfo.pClearValues = clearValues.data();
+
+		vkCmdBeginRenderPass(commandBuffers[imageIndex], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE); // no secondary command buffers
+
+		VkViewport viewport{};
+		viewport.x = 0.0f;
+		viewport.y = 0.0f;
+		viewport.width = static_cast<float>(lveSwapChain->getSwapChainExtent().width);
+		viewport.height = static_cast<float>(lveSwapChain->getSwapChainExtent().height);
+		viewport.minDepth = 0.0f;
+		viewport.maxDepth = 1.0f;
+		VkRect2D scissor{ {0, 0}, lveSwapChain->getSwapChainExtent() };
+		vkCmdSetViewport(commandBuffers[imageIndex], 0, 1, &viewport);
+		vkCmdSetScissor(commandBuffers[imageIndex], 0, 1, &scissor);
+
+		lvePipeline->bind(commandBuffers[imageIndex]); // bind graphics pipeline
+		lveModel->bind(commandBuffers[imageIndex]); // bind model with vertix data
+		lveModel->draw(commandBuffers[imageIndex]); // record command buffer to draw every vertex contained in buffer
+
+		vkCmdEndRenderPass(commandBuffers[imageIndex]);
+		if (vkEndCommandBuffer(commandBuffers[imageIndex]) != VK_SUCCESS) {
+			throw std::runtime_error("failed to record command buffer!");
+		}
+	}
 
 	void FirstApp::drawFrame() {
 		uint32_t imageIndex;
-		auto result = lveSwapChain.acquireNextImage(&imageIndex); // determine if nextImage could be acquired
+		auto result = lveSwapChain->acquireNextImage(&imageIndex); // determine if nextImage could be acquired
+
+		if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+			recreateSwapChain();
+			return;
+		}
 
 		if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
 			throw std::runtime_error("failed to acquire swap chain image!");
 		}
 
-		result = lveSwapChain.submitCommandBuffers(&commandBuffers[imageIndex], &imageIndex);
+		recordCommandBuffer(imageIndex);
+		result = lveSwapChain->submitCommandBuffers(&commandBuffers[imageIndex], &imageIndex);
+		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || lveWindow.wasWindowResized()) {
+			lveWindow.resetWindowResizedFlag();
+			recreateSwapChain();
+			return;
+		}
 		if (result != VK_SUCCESS) {
 			throw std::runtime_error("failed to present swap chain image");
 		}
