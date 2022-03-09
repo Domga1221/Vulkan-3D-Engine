@@ -11,11 +11,19 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "shaders", "shaders", "{0F5D
 		simple_shader.vert = simple_shader.vert
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{7CA9EA2F-8FAC-4331-8887-CA42FBB60DA4}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "shaders_compile", "shaders_compile", "{7CA9EA2F-8FAC-4331-8887-CA42FBB60DA4}"
 	ProjectSection(SolutionItems) = preProject
 		compile.bat = compile.bat
 		simple_shader.frag.spv = simple_shader.frag.spv
 		simple_shader.vert.spv = simple_shader.vert.spv
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "models", "models", "{F5F83376-B458-44D0-90D9-0912E3E9EEF3}"
+	ProjectSection(SolutionItems) = preProject
+		models\colored_cube.obj = models\colored_cube.obj
+		models\cube.obj = models\cube.obj
+		models\flat_vase.obj = models\flat_vase.obj
+		models\smooth_vase.obj = models\smooth_vase.obj
 	EndProjectSection
 EndProject
 Global
