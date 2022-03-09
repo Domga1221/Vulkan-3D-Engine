@@ -1,4 +1,5 @@
 #include "first_app.hpp"
+#include "lve_camera.hpp"
 #include "simple_render_system.hpp"
 
 #include <stdexcept>
@@ -20,13 +21,18 @@ namespace lve {
 
 	void lve::FirstApp::run() {
 		SimpleRenderSystem simpleRenderSystem{ lveDevice, lveRenderer.getSwapChainRenderPass() };
+        LveCamera camera{};
 
 		while (!lveWindow.shouldClose()) {
 			glfwPollEvents(); // poll window events, keyboard keys, etc.
+
+            float aspect = lveRenderer.getAspectRatio();
+            //camera.setOrthographicProjection(-aspect, aspect, -1, 1, -1, 1);
+            camera.setPerspectiveProjection(glm::radians(50.0f), aspect, 0.1f, 10.0f);
 			
 			if (auto commandBuffer = lveRenderer.beginFrame()) {
 				lveRenderer.beginSwapChainRenderPass(commandBuffer);
-				simpleRenderSystem.renderGameObjects(commandBuffer, gameObjects);
+				simpleRenderSystem.renderGameObjects(commandBuffer, gameObjects, camera);
 				lveRenderer.endSwapChainRenderPass(commandBuffer);
 				lveRenderer.endFrame();
 			}
@@ -35,23 +41,72 @@ namespace lve {
 		vkDeviceWaitIdle(lveDevice.device()); // CPU blocks until all GPU operations have completed
 	}
 
-	void FirstApp::loadGameObjects() {
-		std::vector<LveModel::Vertex> vertices{
-			{{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-			{{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
-			{{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
-		};
+    // temporary helper function, creates a 1x1x1 cube centered at offset
+    std::unique_ptr<LveModel> createCubeModel(LveDevice& device, glm::vec3 offset) {
+        std::vector<LveModel::Vertex> vertices{
 
-		auto lveModel = std::make_shared<LveModel>(lveDevice, vertices);
+            // left face (white)
+            {{-.5f, -.5f, -.5f}, {.9f, .9f, .9f}},
+            {{-.5f, .5f, .5f}, {.9f, .9f, .9f}},
+            {{-.5f, -.5f, .5f}, {.9f, .9f, .9f}},
+            {{-.5f, -.5f, -.5f}, {.9f, .9f, .9f}},
+            {{-.5f, .5f, -.5f}, {.9f, .9f, .9f}},
+            {{-.5f, .5f, .5f}, {.9f, .9f, .9f}},
 
-		auto triangle = LveGameObject::createGameObject();
-		triangle.model = lveModel;
-		triangle.color = { 0.1f,0.8f,0.1f };
-		triangle.transform2d.translation.x = 0.2f;
-		triangle.transform2d.scale = { 2.0f, 0.5f };
-		triangle.transform2d.rotation = 0.25f * glm::two_pi<float>(); // 90 degree rotation
+            // right face (yellow)
+            {{.5f, -.5f, -.5f}, {.8f, .8f, .1f}},
+            {{.5f, .5f, .5f}, {.8f, .8f, .1f}},
+            {{.5f, -.5f, .5f}, {.8f, .8f, .1f}},
+            {{.5f, -.5f, -.5f}, {.8f, .8f, .1f}},
+            {{.5f, .5f, -.5f}, {.8f, .8f, .1f}},
+            {{.5f, .5f, .5f}, {.8f, .8f, .1f}},
 
-		gameObjects.push_back(std::move(triangle));
-	}
+            // top face (orange, remember y axis points down)
+            {{-.5f, -.5f, -.5f}, {.9f, .6f, .1f}},
+            {{.5f, -.5f, .5f}, {.9f, .6f, .1f}},
+            {{-.5f, -.5f, .5f}, {.9f, .6f, .1f}},
+            {{-.5f, -.5f, -.5f}, {.9f, .6f, .1f}},
+            {{.5f, -.5f, -.5f}, {.9f, .6f, .1f}},
+            {{.5f, -.5f, .5f}, {.9f, .6f, .1f}},
+
+            // bottom face (red)
+            {{-.5f, .5f, -.5f}, {.8f, .1f, .1f}},
+            {{.5f, .5f, .5f}, {.8f, .1f, .1f}},
+            {{-.5f, .5f, .5f}, {.8f, .1f, .1f}},
+            {{-.5f, .5f, -.5f}, {.8f, .1f, .1f}},
+            {{.5f, .5f, -.5f}, {.8f, .1f, .1f}},
+            {{.5f, .5f, .5f}, {.8f, .1f, .1f}},
+
+            // nose face (blue)
+            {{-.5f, -.5f, 0.5f}, {.1f, .1f, .8f}},
+            {{.5f, .5f, 0.5f}, {.1f, .1f, .8f}},
+            {{-.5f, .5f, 0.5f}, {.1f, .1f, .8f}},
+            {{-.5f, -.5f, 0.5f}, {.1f, .1f, .8f}},
+            {{.5f, -.5f, 0.5f}, {.1f, .1f, .8f}},
+            {{.5f, .5f, 0.5f}, {.1f, .1f, .8f}},
+
+            // tail face (green)
+            {{-.5f, -.5f, -0.5f}, {.1f, .8f, .1f}},
+            {{.5f, .5f, -0.5f}, {.1f, .8f, .1f}},
+            {{-.5f, .5f, -0.5f}, {.1f, .8f, .1f}},
+            {{-.5f, -.5f, -0.5f}, {.1f, .8f, .1f}},
+            {{.5f, -.5f, -0.5f}, {.1f, .8f, .1f}},
+            {{.5f, .5f, -0.5f}, {.1f, .8f, .1f}},
+
+        };
+        for (auto& v : vertices) {
+            v.position += offset;
+        }
+        return std::make_unique<LveModel>(device, vertices);
+    }
+
+    void FirstApp::loadGameObjects() {
+        std::shared_ptr<LveModel> lveModel = createCubeModel(lveDevice, { 0.0f, 0.0f, 0.0f });
+        auto cube = LveGameObject::createGameObject();
+        cube.model = lveModel;
+        cube.transform.translation = { 0.0f, 0.0f, 2.5f };
+        cube.transform.scale = { 0.5f, 0.5f, 0.5f };
+        gameObjects.push_back(std::move(cube));
+    }
 
 }
