@@ -5,7 +5,7 @@
 
 <h2>Features</h2>
 <p>- Using Vulkan to communicate between CPU and GPU: https://www.vulkan.org/</p>
-<p>- Camera can be controller with WASD and arrow keys</p>
+<p>- Camera can be controlled with WASD and arrow keys</p>
 <p>- offers basic lighting with diffuse shading</p>
 <p>- window resizing</p>
 <p>- allows for model loading via tinyobjloader: https://github.com/tinyobjloader/tinyobjloader</p>
