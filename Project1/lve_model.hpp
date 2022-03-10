@@ -1,6 +1,7 @@
 #pragma once
 
 #include "lve_device.hpp"
+#include "lve_buffer.hpp"
 
 #define GLM_FORCE_RADIANS // glm functions will expect angles in radians not degrees
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE // depth buffer values will range from 0 to 1
@@ -52,13 +53,13 @@ namespace lve {
 
 		LveDevice& lveDevice;
 
-		VkBuffer vertexBuffer;
-		VkDeviceMemory vertexBufferMemory;
+		// vertex
+		std::unique_ptr<LveBuffer> vertexBuffer;
 		uint32_t vertexCount;
 
+		// index
 		bool hasIndexBuffer = false;
-		VkBuffer indexBuffer;
-		VkDeviceMemory indexBufferMemory;
+		std::unique_ptr<LveBuffer> indexBuffer;
 		uint32_t indexCount;
 
 	};
