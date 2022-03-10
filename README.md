@@ -10,3 +10,4 @@
 <p>- window resizing</p>
 <p>- allows for model loading via tinyobjloader: https://github.com/tinyobjloader/tinyobjloader</p>
 <p>- learn it yourself with: https://vulkan-tutorial.com/</p>
+<p>- razorcrest model taken from: https://www.cgtrader.com/free-3d-models/aircraft/private-aircraft/the-razor-crest</p>
